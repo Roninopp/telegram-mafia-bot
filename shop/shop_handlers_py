@@ -1,0 +1,151 @@
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes, CallbackQueryHandler
+from core.database import Database
+from .shop_core import shop_core
+
+db = Database()
+
+async def shop_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Main shop menu - called from your existing button handler"""
+    query = update.callback_query
+    await query.answer()
+    
+    user = query.from_user
+    player = db.get_player(user.id)
+    
+    if not player:
+        await query.edit_message_text(
+            "❌ You need to create a character first!",
+            parse_mode='Markdown'
+        )
+        return
+    
+    categories = shop_core.get_shop_categories()
+    
+    # Build category buttons
+    keyboard = []
+    for category_id, category_data in categories.items():
+        keyboard.append([
+            InlineKeyboardButton(
+                category_data["name"], 
+                callback_data=f"shop_category_{category_id}"
+            )
+        ])
+    
+    # Add back button matching your style
+    keyboard.append([InlineKeyboardButton("🔙 Main Menu", callback_data="main_menu")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        f"🏪 **Mafia Black Market** 🏪\n\n"
+        f"💰 **Your Gold:** {player.gold}\n"
+        f"⭐ **Level:** {player.level}\n"
+        f"🎭 **Class:** {player.character_class.title()}\n\n"
+        f"*Browse our exclusive inventory:*",
+        parse_mode='Markdown',
+        reply_markup=reply_markup
+    )
+
+async def shop_category_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show items in a specific category"""
+    query = update.callback_query
+    await query.answer()
+    
+    user = query.from_user
+    player = db.get_player(user.id)
+    
+    # Extract category from callback data (shop_category_weapons -> weapons)
+    category = query.data.replace("shop_category_", "")
+    
+    categories = shop_core.get_shop_categories()
+    category_data = categories.get(category)
+    
+    if not category_data:
+        await query.edit_message_text("❌ Category not found!")
+        return
+    
+    items = shop_core.get_category_items(category)
+    
+    # Build item buttons
+    keyboard = []
+    for item_id, item_data in items.items():
+        # Check if player can buy this item
+        can_purchase, requirement_msg = shop_core.meets_requirements(player, item_data)
+        
+        if can_purchase:
+            button_text = f"{item_data['name']} - 💰{item_data['price']}"
+        else:
+            button_text = f"🔒 {item_data['name']} - 💰{item_data['price']}"
+        
+        keyboard.append([
+            InlineKeyboardButton(
+                button_text,
+                callback_data=f"shop_buy_{category}_{item_id}"
+            )
+        ])
+    
+    # Navigation buttons matching your style
+    keyboard.append([InlineKeyboardButton("🔙 Back to Shop", callback_data="shop")])
+    keyboard.append([InlineKeyboardButton("🎮 Main Menu", callback_data="main_menu")])
+    
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await query.edit_message_text(
+        f"{category_data['name']}\n"
+        f"_{category_data['description']}_\n\n"
+        f"💰 **Your Gold:** {player.gold}\n\n"
+        f"**Available Items:**",
+        parse_mode='Markdown',
+        reply_markup=reply_markup
+    )
+
+async def shop_purchase_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle item purchases"""
+    query = update.callback_query
+    await query.answer()
+    
+    user = query.from_user
+    
+    # Extract purchase data (shop_buy_weapons_brass_knuckles)
+    data_parts = query.data.replace("shop_buy_", "").split("_")
+    category = data_parts[0]
+    item_id = "_".join(data_parts[1:])  # Handle multi-word item IDs
+    
+    # Process purchase
+    success, message = shop_core.purchase_item(user.id, category, item_id)
+    
+    if success:
+        # Success - show purchase result with options
+        keyboard = [
+            [InlineKeyboardButton("🛒 Continue Shopping", callback_data="shop")],
+            [InlineKeyboardButton("🔙 Main Menu", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            f"🎉 {message}",
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+    else:
+        # Failed purchase - go back to category
+        keyboard = [
+            [InlineKeyboardButton("🔙 Back to Category", callback_data=f"shop_category_{category}")],
+            [InlineKeyboardButton("🎮 Main Menu", callback_data="main_menu")]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        await query.edit_message_text(
+            f"❌ Purchase Failed!\n\n{message}",
+            parse_mode='Markdown',
+            reply_markup=reply_markup
+        )
+
+# Export handlers for your bot.py
+def get_shop_handlers():
+    return [
+        CallbackQueryHandler(shop_main_menu, pattern="^shop$"),
+        CallbackQueryHandler(shop_category_menu, pattern="^shop_category_"),
+        CallbackQueryHandler(shop_purchase_handler, pattern="^shop_buy_")
+    ]
