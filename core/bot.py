@@ -38,3 +38,14 @@ class MafiaBot:
 if __name__ == "__main__":
     bot = MafiaBot()
     bot.run()
+def _setup_handlers(self):
+    """Register all command handlers"""
+    # Import and register start handlers
+    from handlers.start import register_handlers as register_start_handlers
+    register_start_handlers(self.application)
+    
+    # Import and register combat handlers  ← ADD THIS LINE
+    from handlers.combat import register_handlers as register_combat_handlers
+    register_combat_handlers(self.application)  ← ADD THIS LINE
+    
+    logger.info("✅ All handlers registered")
