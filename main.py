@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
+import sys
+import os
 import logging
-from core.bot import MafiaBot
+
+# FIX: Add project root to Python path
+project_root = os.path.dirname(os.path.abspath(__file__))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
 
 def main():
     try:
+        from core.bot import MafiaBot
         bot = MafiaBot()
         bot.run()
     except Exception as e:
