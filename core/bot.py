@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, 
 from core.database import Database
 from models.player import Player
 from shop.shop_handlers import get_shop_handlers
+from handlers.combat_integration import integrate_combat_system
 
 # Initialize database
 db = Database()
@@ -58,7 +59,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "my_profile":
         await profile_handler_query(query)
     elif data == "combat":
-        await combat_menu(query)
+        from handlers.combat_handlers import combat_handlers
+        await combat_handlers.combat_menu(update, context)
     elif data == "gang_info":
         await query.edit_message_text("👥 **Gang System**\n\nForm alliances with other players!\n\n*Coming soon in next update!*", parse_mode='Markdown')
     elif data == "shop":
@@ -238,12 +240,15 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def register_handlers(application):
     application.add_handler(CommandHandler("start", start_handler))
     application.add_handler(CommandHandler("profile", profile_handler_query))
-    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(create_char|my_profile|combat|gang_info)$"))
+    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(create_char|my_profile|gang_info)$"))
     
     # ADD SHOP HANDLERS HERE
     shop_handlers = get_shop_handlers()
     for handler in shop_handlers:
         application.add_handler(handler)
+    
+    # ADD COMBAT SYSTEM INTEGRATION
+    integrate_combat_system(application)
     
     application.add_handler(CallbackQueryHandler(class_selection_handler, pattern="^(class_enforcer|class_hacker|class_smuggler)$"))
     application.add_handler(CallbackQueryHandler(main_menu_handler, pattern="^main_menu$"))
