@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, 
 from core.database import Database
 from models.player import Player
 from shop.shop_handlers import get_shop_handlers
+
 # Initialize database
 db = Database()
 
@@ -61,7 +62,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "gang_info":
         await query.edit_message_text("👥 **Gang System**\n\nForm alliances with other players!\n\n*Coming soon in next update!*", parse_mode='Markdown')
     elif data == "shop":
-        await query.edit_message_text("🏪 **Black Market**\n\nBuy weapons, armor, and items!\n\n*Coming soon in next update!*", parse_mode='Markdown')
+        from shop.shop_handlers import shop_main_menu
+        await shop_main_menu(update, context)
 
 async def create_character_menu(query):
     """Show character creation with buttons"""
@@ -236,7 +238,13 @@ async def main_menu_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 def register_handlers(application):
     application.add_handler(CommandHandler("start", start_handler))
     application.add_handler(CommandHandler("profile", profile_handler_query))
-    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(create_char|my_profile|combat|gang_info|shop)$"))
+    application.add_handler(CallbackQueryHandler(button_handler, pattern="^(create_char|my_profile|combat|gang_info)$"))
+    
+    # ADD SHOP HANDLERS HERE
+    shop_handlers = get_shop_handlers()
+    for handler in shop_handlers:
+        application.add_handler(handler)
+    
     application.add_handler(CallbackQueryHandler(class_selection_handler, pattern="^(class_enforcer|class_hacker|class_smuggler)$"))
     application.add_handler(CallbackQueryHandler(main_menu_handler, pattern="^main_menu$"))
     application.add_handler(CallbackQueryHandler(profile_handler_query, pattern="^my_profile$"))
