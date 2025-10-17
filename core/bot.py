@@ -23,11 +23,11 @@ class MafiaBot:
     
     def _setup_handlers(self):
         """Register all command handlers"""
-        # Basic start command for now
-        from handlers.start import start_handler
-        self.application.add_handler(CommandHandler("start", start_handler))
+        # Import and register start handlers
+        from handlers.start import register_handlers as register_start_handlers
+        register_start_handlers(self.application)
         
-        logger.info("✅ Handlers registered")
+        logger.info("✅ All handlers registered")
     
     def run(self):
         """Start the bot"""
