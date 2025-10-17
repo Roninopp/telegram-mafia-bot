@@ -2,7 +2,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters, CallbackQueryHandler
 from core.database import Database
 from models.player import Player
-
+from shop.shop_handlers import get_shop_handlers
 # Initialize database
 db = Database()
 
